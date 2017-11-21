@@ -31,7 +31,7 @@ public class GreetMain : Script
     {
         if (GetDistance(sender.position, target.position) <= greetingMaxDistance)
         {
-            if (sender.hasData("GREET_PLAYER"))
+            if (sender.hasData("GREET_PLAYER")) // If the player has greet data then we have to reset the old greeting
             {
                 Client oldTarget = sender.getData("GREET_PLAYER");
                 if (oldTarget.exists)
@@ -101,7 +101,7 @@ public class GreetMain : Script
                 break;
         }
 
-
+        ResetPlayersGreetData(sender, target);
     }
 
     private void SetPlayersGreetData(Client sender, Client target)
