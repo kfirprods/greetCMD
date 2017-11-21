@@ -58,8 +58,8 @@ public class GreetMain : Script
             Client sender = target.getData("GREET_PLAYER");
             if (GetDistance(sender.position, target.position) <= greetingMaxDistance)
             {
-                ResetPlayersGreetData(sender, target);
                 DoGreeting(sender, target, target.getData("GREET_ANIM"));
+                ResetPlayersGreetData(sender, target); // At this point the greeting has been completed and so the data are reset
             }
             else
             {
@@ -100,8 +100,6 @@ public class GreetMain : Script
                 API.playPlayerAnimation(target, flags, "anim@mp_player_intcelebrationpaired@f_m_high_five", "high_five_right_facial");
                 break;
         }
-
-        ResetPlayersGreetData(sender, target);
     }
 
     private void SetPlayersGreetData(Client sender, Client target)
