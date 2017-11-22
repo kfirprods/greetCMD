@@ -1,6 +1,8 @@
 ﻿/// <reference path="types-gt-mp/index.d.ts" />
 
-var greet_menu = API.createMenu("Greetings", "Choose greeting:", 0, 0, 6, true);
+// CR: Typescript convention - use "let" instead of var
+// CR: TS & JS convention - use camelCase when naming variables, i.e greetMenu
+var greet_menu = API.createMenu("Greetings", "Choose greeting", 0, 0, 6, true);
 
 greet_menu.AddItem(API.createMenuItem("Handshake", "Handshake"));
 greet_menu.AddItem(API.createMenuItem("Kiss", "Kiss"));
