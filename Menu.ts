@@ -1,6 +1,6 @@
 ﻿/// <reference path="types-gt-mp/index.d.ts" />
 
-var greet_menu = API.createMenu("Greetings", "Choose greeting:", 0, 0, 3, false);
+var greet_menu = API.createMenu("Greetings", "Choose greeting:", 0, 0, 6, true);
 
 greet_menu.AddItem(API.createMenuItem("Handshake", "Handshake"));
 greet_menu.AddItem(API.createMenuItem("Kiss", "Kiss"));
