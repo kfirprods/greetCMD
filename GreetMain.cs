@@ -1,4 +1,4 @@
-﻿using GrandTheftMultiplayer.Server.API;
+using GrandTheftMultiplayer.Server.API;
 using GrandTheftMultiplayer.Server.Elements;
 using GrandTheftMultiplayer.Server.Managers;
 
@@ -17,6 +17,7 @@ public enum AnimationFlags
 
 public class GreetMain : Script
 {
+    // CR: C# Conventions: Use a private constant with PascalCasing, i.e private constant float GreetingMaxDistance = 1.2f
     public float greetingMaxDistance = 1.2f;
 
     public GreetMain()
@@ -39,10 +40,11 @@ public class GreetMain : Script
         {
             if (sender.hasData("GREET_PLAYER")) // If the player has greet data then we have to reset the old greeting
             {
-                Client oldTarget = sender.getData("GREET_PLAYER");
+                var oldTarget = sender.getData("GREET_PLAYER");
                 if (oldTarget.exists)
                 {
                     oldTarget.resetData("GREET_PLAYER");
+                    // CR: Feels like an unnecessary thing to mention to the user
                     API.sendChatMessageToPlayer(oldTarget, "Your greeting request has been declined.");
                 }
             }
@@ -61,7 +63,7 @@ public class GreetMain : Script
     {
        if (target.hasData("GREET_PLAYER"))
         {
-            Client sender = target.getData("GREET_PLAYER");
+            var sender = target.getData("GREET_PLAYER");
             if (GetDistance(sender.position, target.position) <= greetingMaxDistance)
             {
                 DoGreeting(sender, target, target.getData("GREET_ANIM"));
@@ -80,18 +82,22 @@ public class GreetMain : Script
 
     public void DoGreeting(Client sender, Client target, int type)
     {
-        foreach (Client player in API.getPlayersInRadiusOfPlayer(10f, sender))
+        foreach (var player in API.getPlayersInRadiusOfPlayer(10f, sender))
         {
+            // CR: Redundant message; an emote is not in place either, because the handshake is visible to anyone watching them
             API.sendChatMessageToPlayer(player, sender.name + " is greeting " + target.name + ".");
         }
 
-        // Rotating players to face each other
+        // Rotate the sender towards the target
         API.setEntityRotation(sender, new Vector3(sender.rotation.X, sender.rotation.Y, Vector3ToAngle(sender.position, target.position)));
-        API.setEntityRotation(target, new Vector3(target.rotation.X, target.rotation.Y, Vector3ToAngle(target.position, sender.position)));
 
         // Playing the same animation for both players
-        int flags = (int)(AnimationFlags.StopOnLastFrame | AnimationFlags.Cancellable);
+        var flags = (int)(AnimationFlags.StopOnLastFrame | AnimationFlags.Cancellable);
 
+        // CR: Could have been nicer if the animations were not statically indexed and typed here, but managed in a JSON file
+        // ... and then sent to the client upon /greet, thus making the feature more extendable.
+        // Don't do this now however, because we have a generic server-side menu system in the actual game mode.
+        // I'll do that when I merge your code to the actual game mode.
         switch (type){
             case 0:
                 API.playPlayerAnimation(sender, flags, "mp_ped_interaction", "handshake_guy_a");
@@ -124,9 +130,12 @@ public class GreetMain : Script
     {
         switch (eventName) {
             case "GREET":
-                Client target = player.getData("GREET_PLAYER");
+            
+                var target = player.getData("GREET_PLAYER");
                 target.setData("GREET_ANIM", (int)arguments[0]);
 
+                // CR: This duplicated and statically indexed way of messaging is also a bummer. I'll fix it when I merge to the game mode
+                // CR: The sender should also get an indicative message as such "You sent {} a {} greeting request"
                 switch ((int)arguments[0])
                 {
                     case 0:
