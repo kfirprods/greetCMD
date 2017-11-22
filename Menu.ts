@@ -3,7 +3,7 @@
 var greet_menu = API.createMenu("Greetings", "Choose greeting:", 0, 0, 3, false);
 
 greet_menu.AddItem(API.createMenuItem("Handshake", "Handshake"));
-greet_menu.AddItem(API.createMenuItem("Fist Bump", "Fist Bump"));
+greet_menu.AddItem(API.createMenuItem("Kiss", "Kiss"));
 greet_menu.AddItem(API.createMenuItem("High Five", "High Five"));
 
 greet_menu.OnItemSelect.connect(function (sender, item, index) {

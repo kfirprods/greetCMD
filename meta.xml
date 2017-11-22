@@ -1,0 +1,6 @@
+<meta>
+    <info name="GreetCMD" author="NickTaSpy" type="script" async="true" />
+    
+    <script src="GreetMain.cs" type="server" lang="csharp" />    
+	<script src="Menu.ts" type="client" lang="javascript" />    
+</meta>

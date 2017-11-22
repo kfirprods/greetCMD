@@ -29,7 +29,13 @@ public class GreetMain : Script
     [Command("greet")]
     public void Greet(Client sender, Client target)
     {
-        if (GetDistance(sender.position, target.position) <= greetingMaxDistance)
+        if (sender == target)
+        {
+            API.sendChatMessageToPlayer(sender, "You can't greet yourself!");
+            return;
+        }
+
+        if (GetDistance(sender.position, target.position) <= greetingMaxDistance) // Checking the distance between the duo
         {
             if (sender.hasData("GREET_PLAYER")) // If the player has greet data then we have to reset the old greeting
             {
@@ -80,24 +86,24 @@ public class GreetMain : Script
         }
 
         // Rotating players to face each other
-        sender.rotation.Z = DirectionToHeading(target.position);
-        target.rotation.Z = DirectionToHeading(sender.position);
+        API.setEntityRotation(sender, new Vector3(sender.rotation.X, sender.rotation.Y, Vector3ToAngle(sender.position, target.position)));
+        API.setEntityRotation(target, new Vector3(target.rotation.X, target.rotation.Y, Vector3ToAngle(target.position, sender.position)));
 
         // Playing the same animation for both players
-        int flags = (int)(AnimationFlags.StopOnLastFrame | AnimationFlags.AllowPlayerControl | AnimationFlags.Cancellable);
+        int flags = (int)(AnimationFlags.StopOnLastFrame | AnimationFlags.Cancellable);
 
         switch (type){
             case 0:
-                API.playPlayerAnimation(sender, flags, "anim@mp_player_intcelebrationpaired@f_m_manly_handshake", "manly_handshake_right_facial");
-                API.playPlayerAnimation(target, flags, "anim@mp_player_intcelebrationpaired@f_m_manly_handshake", "manly_handshake_right_facial");
+                API.playPlayerAnimation(sender, flags, "mp_ped_interaction", "handshake_guy_a");
+                API.playPlayerAnimation(target, flags, "mp_ped_interaction", "handshake_guy_a");
                 break;
             case 1:
-                API.playPlayerAnimation(sender, flags, "anim@mp_player_intcelebrationpaired@f_f_fist_bump", "fist_bump_right_facial");
-                API.playPlayerAnimation(target, flags, "anim@mp_player_intcelebrationpaired@f_f_fist_bump", "fist_bump_right_facial");
+                API.playPlayerAnimation(sender, flags, "mp_ped_interaction", "kisses_guy_a");
+                API.playPlayerAnimation(target, flags, "mp_ped_interaction", "kisses_guy_a");
                 break;
             case 2:
-                API.playPlayerAnimation(sender, flags, "anim@mp_player_intcelebrationpaired@f_m_high_five", "high_five_right_facial");
-                API.playPlayerAnimation(target, flags, "anim@mp_player_intcelebrationpaired@f_m_high_five", "high_five_right_facial");
+                API.playPlayerAnimation(sender, flags, "mp_ped_interaction", "highfive_guy_a");
+                API.playPlayerAnimation(target, flags, "mp_ped_interaction", "highfive_guy_a");
                 break;
         }
     }
@@ -118,19 +124,19 @@ public class GreetMain : Script
     {
         switch (eventName) {
             case "GREET":
-                player.setData("GREET_ANIM", arguments[0]);
                 Client target = player.getData("GREET_PLAYER");
+                target.setData("GREET_ANIM", (int)arguments[0]);
 
-                switch (arguments[0])
+                switch ((int)arguments[0])
                 {
                     case 0:
-                        API.sendChatMessageToPlayer(target, target.name + " has sent you a handshake request. ' /acceptgreet ' to accept.");
+                        API.sendChatMessageToPlayer(target, player.name + " has sent you a handshake request. ' /acceptgreet ' to accept.");
                         break;
                     case 1:
-                        API.sendChatMessageToPlayer(target, target.name + " has sent you a fist bump request. ' /acceptgreet ' to accept.");
+                        API.sendChatMessageToPlayer(target, player.name + " has sent you a kiss request. ' /acceptgreet ' to accept.");
                         break;
                     case 2:
-                        API.sendChatMessageToPlayer(target, target.name + " has sent you a high five request. ' /acceptgreet ' to accept.");
+                        API.sendChatMessageToPlayer(target, player.name + " has sent you a high five request. ' /acceptgreet ' to accept.");
                         break;
                 }
                 break;
@@ -149,20 +155,16 @@ public class GreetMain : Script
         }
     }
 
-    public static float RadiansToDegrees(float radian)
-    {
-        return radian * (180.0f / (float)Math.PI);
-    }
-
-    public static float DirectionToHeading(Vector3 dir)
-    {
-        dir.Z = 0.0f;
-        dir.Normalize();
-        return RadiansToDegrees((float)Math.Atan2(dir.X, dir.Y));
-    }
-
     public static float GetDistance(Vector3 pos1, Vector3 pos2)
     {
         return (float)Math.Sqrt(Math.Pow(pos2.X - pos1.X, 2) + Math.Pow(pos2.Y - pos1.Y, 2) + Math.Pow(pos2.Z - pos1.Z, 2));
+    }
+
+    public static float Vector3ToAngle(Vector3 position, Vector3 heading)
+    {
+        float angle = (float)Math.Atan2(heading.Y - position.Y, heading.X - position.Y);
+        angle = angle * (180f / (float)Math.PI);
+
+        return angle;
     }
 }
