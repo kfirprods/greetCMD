@@ -130,17 +130,19 @@ public class GreetMain : Script
                 target.setData("GREET_ANIM", (int)arguments[0]);
 
                 // CR: This duplicated and statically indexed way of messaging is also a bummer. I'll fix it when I merge to the game mode
-                // CR: The sender should also get an indicative message as such "You sent {} a {} greeting request"
                 switch ((int)arguments[0])
                 {
                     case 0:
                         API.sendChatMessageToPlayer(target, player.name + " has sent you a handshake request. ' /acceptgreet ' to accept.");
+                        API.sendChatMessageToPlayer(player, "You have sent a handshake request to " + target.name + ".");
                         break;
                     case 1:
                         API.sendChatMessageToPlayer(target, player.name + " has sent you a kiss request. ' /acceptgreet ' to accept.");
+                        API.sendChatMessageToPlayer(player, "You have sent a kiss request to " + target.name + ".");
                         break;
                     case 2:
                         API.sendChatMessageToPlayer(target, player.name + " has sent you a high five request. ' /acceptgreet ' to accept.");
+                        API.sendChatMessageToPlayer(player, "You have sent a high five request to " + target.name + ".");
                         break;
                 }
                 break;
