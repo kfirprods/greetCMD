@@ -17,8 +17,7 @@ public enum AnimationFlags
 
 public class GreetMain : Script
 {
-    // CR: C# Conventions: Use a private constant with PascalCasing, i.e private constant float GreetingMaxDistance = 1.2f
-    public float greetingMaxDistance = 1.2f;
+    private constant GreetingMaxDistance = 1.2f;
 
     public GreetMain()
     {
@@ -82,15 +81,11 @@ public class GreetMain : Script
 
     public void DoGreeting(Client sender, Client target, int type)
     {
-        foreach (var player in API.getPlayersInRadiusOfPlayer(10f, sender))
-        {
-            // CR: Redundant message; an emote is not in place either, because the handshake is visible to anyone watching them
-            API.sendChatMessageToPlayer(player, sender.name + " is greeting " + target.name + ".");
-        }
-
         // Rotate the sender towards the target
         API.setEntityRotation(sender, new Vector3(sender.rotation.X, sender.rotation.Y, Vector3ToAngle(sender.position, target.position)));
-
+        // Rotation of the target becomes the opposite of the sender's rotation
+        API.setEntityRotation(target, new Vector3(target.rotation.X, target.rotation.Y, sender.rotation.Z + 180f));
+        
         // Playing the same animation for both players
         var flags = (int)(AnimationFlags.StopOnLastFrame | AnimationFlags.Cancellable);
 
