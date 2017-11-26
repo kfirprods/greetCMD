@@ -1,176 +1,171 @@
+using System;
+using System.Linq;
 using GrandTheftMultiplayer.Server.API;
 using GrandTheftMultiplayer.Server.Elements;
 using GrandTheftMultiplayer.Server.Managers;
-
 using GrandTheftMultiplayer.Shared.Math;
-using System;
+using GTALife.Gamemode.Library.FunctionLibraries;
 
-[Flags]
-public enum AnimationFlags
+namespace GTALife.Gamemode.Features.Animations
 {
-    Loop = 1 << 0,
-    StopOnLastFrame = 1 << 1,
-    OnlyAnimateUpperBody = 1 << 4,
-    AllowPlayerControl = 1 << 5,
-    Cancellable = 1 << 7
-}
-
-public class GreetMain : Script
-{
-    private constant GreetingMaxDistance = 1.2f;
-
-    public GreetMain()
+    public class GreetingType
     {
-        API.onClientEventTrigger += OnClientEvent;
-        API.onPlayerDisconnected += OnPlayerQuit;
+        public string Title { get; set; }
+        public string AnimationCategory { get; set; }
+        public string AnimationName { get; set; }
+
+        public GreetingType(string title, string animCategory, string anim)
+        {
+            this.Title = title;
+            this.AnimationCategory = animCategory;
+            this.AnimationName = anim;
+        }
     }
 
-
-    [Command("greet")]
-    public void Greet(Client sender, Client target)
+    public class Greet : Script
     {
-        if (sender == target)
+        private const float GreetingMaxDistance = 1.2f;
+        private const int GreetingAnimationFlags = (int)(AnimHandler.AnimationFlags.StopOnLastFrame | AnimHandler.AnimationFlags.Cancellable);
+        private const string GreetingSenderEntityDataKey = "GREET_SENDER";
+        private const string GreetingTypeSelectionEntityDataKey = "GREET_ANIM";
+
+        private readonly GreetingType[] _greetingTypes;
+
+        public Greet()
         {
-            API.sendChatMessageToPlayer(sender, "You can't greet yourself!");
-            return;
+            this._greetingTypes = new []
+            {
+                new GreetingType("Handshake", "mp_ped_interaction", "handshake_guy_a"),
+                new GreetingType("Kiss", "mp_ped_interaction", "kisses_guy_a"),
+                new GreetingType("High Five", "mp_ped_interaction", "highfive_guy_a"),
+                new GreetingType("Hug", "mp_ped_interaction", "hugs_guy_a"),
+                new GreetingType("Gentle Nod", "mp_cp_welcome_tutgreet", "greet"),
+                new GreetingType("Wave", "rcmepsilonism8", "security_greet"),
+            };
+
+            API.onPlayerDisconnected += OnPlayerQuit;
         }
 
-        if (GetDistance(sender.position, target.position) <= greetingMaxDistance) // Checking the distance between the duo
+
+        [Command("greet", Group = "Player Commands")]
+        public void GreetCommand(Client sender, string targetNameOrId)
         {
-            if (sender.hasData("GREET_PLAYER")) // If the player has greet data then we have to reset the old greeting
+            var target = PlayerLibrary.CommandClientFromString(API, sender, targetNameOrId);
+            if (target == null) return;
+
+            if (sender == target)
             {
-                var oldTarget = sender.getData("GREET_PLAYER");
-                if (oldTarget.exists)
-                {
-                    oldTarget.resetData("GREET_PLAYER");
-                    // CR: Feels like an unnecessary thing to mention to the user
-                    API.sendChatMessageToPlayer(oldTarget, "Your greeting request has been declined.");
-                }
+                API.sendChatMessageToPlayer(sender, Resources.General.cant_greet_self);
+                return;
             }
 
-            SetPlayersGreetData(sender, target);
-            API.triggerClientEvent(sender, "GREET_MENU");
-        }
-        else
-        {
-            API.sendChatMessageToPlayer(sender, "You are too far away.");
-        }
-    }
-
-    [Command("acceptgreet")]
-    public void AcceptGreet(Client target)
-    {
-       if (target.hasData("GREET_PLAYER"))
-        {
-            var sender = target.getData("GREET_PLAYER");
-            if (GetDistance(sender.position, target.position) <= greetingMaxDistance)
+            if (GetDistance(sender.position, target.position) <= GreetingMaxDistance)
             {
-                DoGreeting(sender, target, target.getData("GREET_ANIM"));
-                ResetPlayersGreetData(sender, target); // At this point the greeting has been completed and so the data are reset
+                // If the player has greet data then we have to reset the old greeting information off from the target
+                if (sender.hasData(GreetingSenderEntityDataKey)) 
+                {
+                    var oldTarget = sender.getData(GreetingSenderEntityDataKey);
+                    if (oldTarget.exists)
+                    {
+                        oldTarget.resetData(GreetingSenderEntityDataKey);
+                    }
+                }
+
+                ShowGreetSelectionMenu(sender, target);
             }
             else
             {
-                API.sendChatMessageToPlayer(target, "You are too far away.");
+                API.sendChatMessageToPlayer(sender, Resources.Command.too_far);
             }
         }
-        else
+
+        [Command("acceptgreet")]
+        public void AcceptGreet(Client target)
         {
-            API.sendChatMessageToPlayer(target, "You have no pending greeting requests.");
-        }
-    }
-
-    public void DoGreeting(Client sender, Client target, int type)
-    {
-        // Rotate the sender towards the target
-        API.setEntityRotation(sender, new Vector3(sender.rotation.X, sender.rotation.Y, Vector3ToAngle(sender.position, target.position)));
-        // Rotation of the target becomes the opposite of the sender's rotation
-        API.setEntityRotation(target, new Vector3(target.rotation.X, target.rotation.Y, sender.rotation.Z + 180f));
-        
-        // Playing the same animation for both players
-        var flags = (int)(AnimationFlags.StopOnLastFrame | AnimationFlags.Cancellable);
-
-        // CR: Could have been nicer if the animations were not statically indexed and typed here, but managed in a JSON file
-        // ... and then sent to the client upon /greet, thus making the feature more extendable.
-        // Don't do this now however, because we have a generic server-side menu system in the actual game mode.
-        // I'll do that when I merge your code to the actual game mode.
-        switch (type){
-            case 0:
-                API.playPlayerAnimation(sender, flags, "mp_ped_interaction", "handshake_guy_a");
-                API.playPlayerAnimation(target, flags, "mp_ped_interaction", "handshake_guy_a");
-                break;
-            case 1:
-                API.playPlayerAnimation(sender, flags, "mp_ped_interaction", "kisses_guy_a");
-                API.playPlayerAnimation(target, flags, "mp_ped_interaction", "kisses_guy_a");
-                break;
-            case 2:
-                API.playPlayerAnimation(sender, flags, "mp_ped_interaction", "highfive_guy_a");
-                API.playPlayerAnimation(target, flags, "mp_ped_interaction", "highfive_guy_a");
-                break;
-        }
-    }
-
-    private void SetPlayersGreetData(Client sender, Client target)
-    {
-        sender.setData("GREET_PLAYER", target);
-        target.setData("GREET_PLAYER", sender);
-    }
-
-    private void ResetPlayersGreetData(Client sender, Client target)
-    {
-        target.resetData("GREET_PLAYER");
-        sender.resetData("GREET_PLAYER");
-    }
-
-    private void OnClientEvent(Client player, string eventName, params object[] arguments)
-    {
-        switch (eventName) {
-            case "GREET":
-            
-                var target = player.getData("GREET_PLAYER");
-                target.setData("GREET_ANIM", (int)arguments[0]);
-
-                // CR: This duplicated and statically indexed way of messaging is also a bummer. I'll fix it when I merge to the game mode
-                switch ((int)arguments[0])
+            if (target.hasData(GreetingSenderEntityDataKey))
+            {
+                var sender = target.getData(GreetingSenderEntityDataKey);
+                if (GetDistance(sender.position, target.position) <= GreetingMaxDistance)
                 {
-                    case 0:
-                        API.sendChatMessageToPlayer(target, player.name + " has sent you a handshake request. ' /acceptgreet ' to accept.");
-                        API.sendChatMessageToPlayer(player, "You have sent a handshake request to " + target.name + ".");
-                        break;
-                    case 1:
-                        API.sendChatMessageToPlayer(target, player.name + " has sent you a kiss request. ' /acceptgreet ' to accept.");
-                        API.sendChatMessageToPlayer(player, "You have sent a kiss request to " + target.name + ".");
-                        break;
-                    case 2:
-                        API.sendChatMessageToPlayer(target, player.name + " has sent you a high five request. ' /acceptgreet ' to accept.");
-                        API.sendChatMessageToPlayer(player, "You have sent a high five request to " + target.name + ".");
-                        break;
+                    DoGreeting(sender, target, target.getData(GreetingTypeSelectionEntityDataKey));
+                    ResetPlayersGreetData(sender,
+                        target); // At this point the greeting has been completed and so the data are reset
                 }
-                break;
-
-            case "CANCEL_GREET":
-                ResetPlayersGreetData(player, player.getData("GREET_PLAYER"));
-                break;
+                else
+                {
+                    API.sendChatMessageToPlayer(target, Resources.Command.too_far);
+                }
+            }
+            else
+            {
+                API.sendChatMessageToPlayer(target, Resources.General.no_greeting_requests);
+            }
         }
-    }
 
-    private void OnPlayerQuit(Client player, string reason)
-    {
-        if (player.hasData("GREET_PLAYER"))
+        public void DoGreeting(Client sender, Client target, GreetingType type)
         {
-            ResetPlayersGreetData(player, player.getData("GREET_PLAYER"));
+            // Rotate the sender towards the target
+            API.setEntityRotation(sender,
+                new Vector3(sender.rotation.X, sender.rotation.Y, Vector3ToAngle(sender.position, target.position)));
+
+            // Rotate the target towards the sender
+            API.setEntityRotation(target, new Vector3(target.rotation.X, target.rotation.Y, sender.rotation.Z + 180f));
+
+            // Play the same animation for both players
+            sender.playAnimation(type.AnimationCategory, type.AnimationName, GreetingAnimationFlags);
+            target.playAnimation(type.AnimationCategory, type.AnimationName, GreetingAnimationFlags);
         }
-    }
 
-    public static float GetDistance(Vector3 pos1, Vector3 pos2)
-    {
-        return (float)Math.Sqrt(Math.Pow(pos2.X - pos1.X, 2) + Math.Pow(pos2.Y - pos1.Y, 2) + Math.Pow(pos2.Z - pos1.Z, 2));
-    }
+        private void SetPlayersGreetData(Client sender, Client target)
+        {
+            sender.setData(GreetingSenderEntityDataKey, target);
+            target.setData(GreetingSenderEntityDataKey, sender);
+        }
 
-    public static float Vector3ToAngle(Vector3 position, Vector3 heading)
-    {
-        float angle = (float)Math.Atan2(heading.Y - position.Y, heading.X - position.Y);
-        angle = angle * (180f / (float)Math.PI);
+        private void ResetPlayersGreetData(Client sender, Client target)
+        {
+            target.resetData(GreetingSenderEntityDataKey);
+            sender.resetData(GreetingSenderEntityDataKey);
+        }
 
-        return angle;
+        private void ShowGreetSelectionMenu(Client player, Client target)
+        {
+            var greetingMenu = new MenuContent("Greetings", "Greetings", "Choose greeting");
+
+            greetingMenu.AddRange(this._greetingTypes.Select(greetingType => 
+                new SelectMenuItem(greetingType.Title, (api, client, args) =>
+                {
+                    SetPlayersGreetData(client, target);
+                    client.sendChatMessage(string.Format(Resources.General.greeting_request_outgoing, greetingType.Title, NamingFunctions.RoleplayName(target)));
+                    target.sendChatMessage(string.Format(Resources.General.greeting_request_incoming, NamingFunctions.RoleplayName(client), greetingType.Title));
+
+                    target.setData(GreetingTypeSelectionEntityDataKey, greetingType);
+                    return true;
+                })));
+
+            MenuLibrary.OpenMenuContent(this.API, player, greetingMenu, false);
+        }
+
+        private void OnPlayerQuit(Client player, string reason)
+        {
+            if (player.hasData(GreetingSenderEntityDataKey))
+            {
+                ResetPlayersGreetData(player, player.getData(GreetingSenderEntityDataKey));
+            }
+        }
+
+        public static float GetDistance(Vector3 pos1, Vector3 pos2)
+        {
+            return (float) Math.Sqrt(Math.Pow(pos2.X - pos1.X, 2) + Math.Pow(pos2.Y - pos1.Y, 2) +
+                                     Math.Pow(pos2.Z - pos1.Z, 2));
+        }
+
+        public static float Vector3ToAngle(Vector3 position, Vector3 heading)
+        {
+            float angle = (float) Math.Atan2(heading.Y - position.Y, heading.X - position.Y);
+            angle = angle * (180f / (float) Math.PI);
+
+            return angle;
+        }
     }
 }
